@@ -1,0 +1,875 @@
+SMART CONTACT MANAGER
+
+
+
+  CUSTOM USER DETAILS
+
+
+package com.smart.config;
+
+import java.util.Collection;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import com.smart.entities.User;
+
+public class CustomUserDetails implements UserDetails{
+	
+	private User user;
+
+	public CustomUserDetails(User user) {
+		super();
+		this.user = user;
+	}
+
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		
+		SimpleGrantedAuthority simpleGrantedAuthoriy = new SimpleGrantedAuthority(user.getRole());
+		return List.of(simpleGrantedAuthoriy);
+	}
+
+	@Override
+	public String getPassword() {
+		return user.getPassword();
+	}
+
+	@Override
+	public String getUsername() {
+		
+		return user.getEmail();
+	}
+
+	@Override
+	public boolean isAccountNonExpired() {
+		
+		return true;
+	}
+
+	@Override
+	public boolean isAccountNonLocked() {
+		
+		return true;
+	}
+
+	@Override
+	public boolean isCredentialsNonExpired() {
+		
+		return true;
+	}
+
+	@Override
+	public boolean isEnabled() {
+		
+		return true;
+	}
+
+}
+
+
+     MY CONFIG
+
+package com.smart.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+@Configuration
+@EnableWebSecurity
+public class MyConfig  extends WebSecurityConfigurerAdapter{
+	
+	@Bean
+	public UserDetailsService getUserDetailService()
+	{
+		
+		return new UserDetailsServiceImpl();
+	}
+		@Bean
+		public BCryptPasswordEncoder passwordEncoder() {
+			return new BCryptPasswordEncoder();
+			}
+		
+		@Bean
+		public DaoAuthenticationProvider authenticationProvider()
+		{
+			
+			DaoAuthenticationProvider daoAuthenticationProvider= new DaoAuthenticationProvider();
+			daoAuthenticationProvider.setUserDetailsService(this.getUserDetailService());
+			daoAuthenticationProvider.setPasswordEncoder(passwordEncoder());
+			return daoAuthenticationProvider;
+		}
+		
+		//configure method
+		
+		@Override
+		protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+			
+			auth.authenticationProvider(authenticationProvider());
+			
+		}
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			http.authorizeRequests().antMatchers("/admin/**").hasRole("ADMIN")
+			.antMatchers("/user/**").hasRole("USER")
+			.antMatchers("/**").permitAll().and().formLogin()
+			.loginPage("/signin")
+			.loginProcessingUrl("/dologin")
+			.defaultSuccessUrl("/user/index")
+			
+			
+			.and().csrf().disable();
+		}
+		
+		
+		
+	
+		
+	
+
+	
+	
+
+
+}
+
+
+    USERDETAIL SERVICE IMPL
+
+package com.smart.config;
+
+import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.smart.dao.UserRepository;
+import com.smart.entities.User;
+
+public class UserDetailsServiceImpl implements UserDetailsService {
+	
+	@Autowired
+	private UserRepository userRepository;
+	@Override
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		
+		//fetching user from databases
+		 User user =userRepository.getUserByUserName(username);
+		 
+		 if(user==null)
+		 {
+			 throw new UsernameNotFoundException("Could not Found user");
+		 }
+		 
+		 CustomUserDetails customUserDetails = new CustomUserDetails(user);
+		return customUserDetails;
+	}
+
+}
+     
+
+HOME CONTROLLER
+
+
+package com.smart.controller;
+
+import javax.servlet.http.HttpSession;
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+//import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+//import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.smart.dao.UserRepository;
+import com.smart.entities.User;
+import com.smart.helper.Message;
+//import org.springframework.web.bind.annotation.GetMapping;
+//import org.springframework.web.bind.annotation.ResponseBody;
+
+//import com.smart.dao.UserRepository;
+//import com.smart.entities.Contact;
+//import com.smart.entities.User;
+
+@Controller
+public class HomeController {
+	/*
+	@Autowired
+	private UserRepository userRepository;
+	@GetMapping("/test")
+	@ResponseBody
+	public String test() {
+		
+		User user =new User();
+		user.setName("ARNAB Dolui");
+		user.setEmail("arnab.dolui@gmail.com");
+		
+		Contact contact =new Contact();
+		user.getContacts().add(contact);
+		
+		userRepository.save(user);
+		
+		return "working ";
+	}
+	*/
+	@Autowired
+	private BCryptPasswordEncoder passwordEncoder;
+	
+	
+	
+	@Autowired
+	private UserRepository userRepository;
+	
+	@RequestMapping("/")
+	public String home(Model model) {
+		
+		model.addAttribute("title","Home - Smart Contact-Manager");
+		return "home";
+	}
+	
+	@RequestMapping("/about")
+	public String about(Model model) {
+		
+		model.addAttribute("title","About - Smart Contact-Manager");
+		return "about";
+	}
+	
+	@RequestMapping("/signup")
+	public String signup(Model model) {
+		
+		model.addAttribute("title","Register - Smart Contact-Manager");
+		model.addAttribute("user",new User());
+		return "signup";
+	}
+	
+	//handler for custom login
+	@RequestMapping("/signin")
+	public String customLogin(Model model)
+	{	
+		model.addAttribute("title","Login Page");
+		return "login";
+	}
+	
+
+	
+	//handler for registering user
+	@RequestMapping(value= "/do_register",method=RequestMethod.POST)
+	public String registerUser(@Valid @ModelAttribute("user") User user,BindingResult result1,
+			@RequestParam(value="agreement",defaultValue="false")boolean agreement,Model model,
+			 HttpSession session)
+	{	
+		try {
+			if(!agreement)
+			{
+				System.out.println(" You have no agreed the trems and condition");
+				throw new Exception("You have not agreed the terms and condition");
+				
+				
+			}
+			if( result1.hasErrors())
+			{	
+				
+				System.out.println("ERROR" +result1.toString());
+				model.addAttribute("user",user);
+				return "signup";
+			}
+			user.setRole("ROLE_USER");
+			user.setEnabled(true);
+			user.setImageUrl("default.png");
+			user.setPassword(passwordEncoder.encode(user.getPassword()));
+		
+			System.out.println("Agreement" +agreement);
+			System.out.println("User"+user);
+			
+			User result = this.userRepository.save(user);
+			model.addAttribute("user",new User());
+			session.setAttribute("message",new Message("Successfully Register !!","alert-success"));
+			return "signup";
+			
+			
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			model.addAttribute("user",user);
+			session.setAttribute("message",new Message("Somwthing went wrong !!" +e.getMessage(),"alert-danger"));
+			return "signup";
+			}
+		
+		
+	}
+	
+
+}
+   
+
+    USER CONTROLLER
+
+
+package com.smart.controller;
+
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.security.Principal;
+import java.util.List;
+
+import javax.servlet.http.HttpSession;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.smart.dao.ContactRepository;
+import com.smart.dao.UserRepository;
+import com.smart.entities.Contact;
+import com.smart.entities.User;
+import com.smart.helper.Message;
+
+
+
+
+@Controller
+@RequestMapping("/user")
+public class UserController {
+	
+	@Autowired
+	private UserRepository userRepository;
+	@Autowired
+	private ContactRepository contactRepository;
+	//Method for add common data
+	@ModelAttribute
+	public void addCommonData(Model model,Principal principal) {
+		String userName = principal.getName();
+		System.out.println("USERNAME" +userName);
+		User user = userRepository.getUserByUserName(userName);
+		System.out.println("USER"+user);
+		model.addAttribute("user",user);
+		
+	}
+	
+	//dashboard home
+	@RequestMapping("/index")
+	public String dashboard(Model model,Principal principal)
+	{	
+		model.addAttribute("title","User DashBoard");
+		return "normal/user_dashboard";
+	}
+	//open add form handler
+	@GetMapping("add-contact")
+	public String OpenAddContactform(Model model) {
+		model.addAttribute("title","Add Contact");
+		model.addAttribute("contact",new Contact());
+		return "normal/add_contact_form";
+	}
+	//processing  and contact form
+	@PostMapping("/process-contact")
+	public String processContact(@ModelAttribute Contact contact, 
+			@RequestParam("profileImage") MultipartFile file,
+			Principal principal,HttpSession session) {
+		
+		
+		try {
+			String name = principal.getName();
+			User user = this.userRepository.getUserByUserName(name);
+			
+		
+			
+			
+			//process and uploading file
+			
+			if(file.isEmpty())
+			{
+				//if the file is empty then try our message
+				System.out.println("File is Empty");
+			
+			}else
+			{
+				//file the file to folder and update the name to contact
+				contact.setImage(file.getOriginalFilename());
+				File saveFile = new  ClassPathResource("static/img").getFile();
+				Path path = Paths.get(saveFile.getAbsolutePath()+File.separator+file.getOriginalFilename());
+				
+				Files.copy(file.getInputStream(),path,StandardCopyOption.REPLACE_EXISTING);
+				
+				System.out.println("Image is Uplpaded");
+				
+				
+			}
+			
+			contact.setUser(user);
+			user.getContacts().add(contact);
+			
+			this.userRepository.save(user);
+			
+			System.out.println("DATA"+contact);
+			
+			System.out.println("Added to data bases");
+			
+			//message success
+			session.setAttribute("message", new Message("your contact is added !! Add more..", "success"));
+			} catch (Exception e) {
+			System.out.println("ERROR"+e.getMessage());
+			e.printStackTrace();
+			//error message
+			session.setAttribute("message", new Message("Some thing went wrong !! Try again..", "danger"));
+		}
+		
+		return "normal/add_contact_form";
+		
+	}
+	//show contacts handler
+	// per page =5[0]
+	@GetMapping("/show-contacts/{page}")
+	public String showContacts(@PathVariable("page") Integer page,Model m,Principal principal) {
+		m.addAttribute("title","Show user Contacts");
+		
+		//
+		
+		String userName = principal.getName();
+		User user = this.userRepository.getUserByUserName(userName);
+		Pageable pageable = PageRequest.of(page, 5);
+		Page<Contact> contacts = this.contactRepository.findContactsByUser(user.getId(),pageable);
+		
+		
+		m.addAttribute("contacts",contacts);
+		m.addAttribute("currentPage",page);
+		m.addAttribute("totalPages",contacts.getTotalPages());
+		return "normal/show_contacts";
+	
+	}
+	
+
+}
+
+
+CONTACT REPOSITORY
+
+package com.smart.dao;
+
+import java.util.List;
+
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.smart.entities.Contact;
+
+public interface ContactRepository extends JpaRepository<Contact, Integer>{
+	//Pegination ...
+	
+	@Query("from Contact as c where c.user.id =:userId")
+	
+	public Page<Contact> findContactsByUser(@Param("userId")int userId,Pageable pePageable);
+	
+
+}
+
+
+    USER REPOSITORY
+
+package com.smart.dao;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.smart.entities.User;
+
+public interface UserRepository extends JpaRepository <User ,Integer>{
+	@Query("select u from User u where u.email = :email")
+	public User getUserByUserName(@Param("email") String email);
+
+}
+
+
+    CONTACT ENTITIES
+
+package com.smart.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+
+@Entity
+@Table(name="CONTACT")
+public class Contact {
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private int cId;
+	private String name;
+	private String secondName;
+	private String work;
+	private String email;
+	private String phone;
+	private String image;
+	@Column(length = 1000)
+	private String description;
+	
+	@ManyToOne
+	private User user;
+	
+	public int getcId() {
+		return cId;
+	}
+	public void setcId(int cId) {
+		this.cId = cId;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public String getSecondName() {
+		return secondName;
+	}
+	public void setSecondName(String secondName) {
+		this.secondName = secondName;
+	}
+	public String getWork() {
+		return work;
+	}
+	public void setWork(String work) {
+		this.work = work;
+	}
+	public String getEmail() {
+		return email;
+	}
+	public void setEmail(String email) {
+		this.email = email;
+	}
+	public String getPhone() {
+		return phone;
+	}
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+	public String getImage() {
+		return image;
+	}
+	public void setImage(String image) {
+		this.image = image;
+	}
+	public String getDescription() {
+		return description;
+	}
+	public void setDescription(String description) {
+		this.description = description;
+	}
+	public User getUser() {
+		return user;
+	}
+	public void setUser(User user) {
+		this.user = user;
+	}
+
+	
+	
+
+}
+
+
+   USER ENTITY
+
+package com.smart.entities;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
+
+@Entity
+@Table(name="USER")
+public class User {
+	
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private int id;
+	
+	@NotBlank(message ="Name Field is Required")
+	@Size(min=2,max = 20,message="min 2 and max 20 characters are allowed !!")
+	private String name;
+	@Column (unique = true)
+	private String email;
+	private String password;
+	private String role;
+	private boolean enabled;
+	private String imageUrl;
+	@Column(length = 500)
+	private String about;
+	@OneToMany(cascade =CascadeType.ALL,fetch =FetchType.LAZY,mappedBy ="user")
+	private List<Contact> contacts = new ArrayList<>();
+	
+	
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
+	}
+
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
+
+	public String getImageUrl() {
+		return imageUrl;
+	}
+
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
+	}
+
+	public String getAbout() {
+		return about;
+	}
+
+	public void setAbout(String about) {
+		this.about = about;
+	}
+
+	public User() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+
+	public List<Contact> getContacts() {
+		return contacts;
+	}
+
+	public void setContacts(List<Contact> contacts) {
+		this.contacts = contacts;
+	}
+
+	@Override
+	public String toString() {
+		return "User [id=" + id + ", name=" + name + ", email=" + email + ", password=" + password + ", role=" + role
+				+ ", enabled=" + enabled + ", imageUrl=" + imageUrl + ", about=" + about + ", contacts=" + contacts
+				+ "]";
+	}
+	
+	
+
+}
+
+
+
+    HELPER MESSAGE
+
+package com.smart.helper;
+
+public class Message {
+	
+	private String content;
+	private String type;
+	public Message(String content, String type) {
+		super();
+		this.content = content;
+		this.type = type;
+	}
+	public String getContent() {
+		return content;
+	}
+	public void setContent(String content) {
+		this.content = content;
+	}
+	public String getType() {
+		return type;
+	}
+	public void setType(String type) {
+		this.type = type;
+	}
+	
+	
+
+}
+  
+
+   SMART CONTACT MANAGER APPLICATION
+
+package com.smart;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SmartcontactmanagerApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SmartcontactmanagerApplication.class, args);
+	}
+
+}
+ 
+
+      POM XML
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
+<parent>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-parent</artifactId>
+<version>2.5.7</version>
+<relativePath/>
+<!--  lookup parent from repository  -->
+</parent>
+<groupId>com.smart</groupId>
+<artifactId>smartcontactmanager</artifactId>
+<version>0.0.1-SNAPSHOT</version>
+<name>smartcontactmanager</name>
+<description>first spring boot project</description>
+<properties>
+<java.version>11</java.version>
+</properties>
+<dependencies>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<!--  https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-security  -->
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-devtools</artifactId>
+<scope>runtime</scope>
+<optional>true</optional>
+</dependency>
+<dependency>
+<groupId>mysql</groupId>
+<artifactId>mysql-connector-java</artifactId>
+<scope>runtime</scope>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-test</artifactId>
+<scope>test</scope>
+</dependency>
+<!--  https://mvnrepository.com/artifact/javax.validation/validation-api  -->
+<dependency>
+<groupId>javax.validation</groupId>
+<artifactId>validation-api</artifactId>
+</dependency>
+<!--  https://mvnrepository.com/artifact/org.hibernate/hibernate-validator  -->
+<dependency>
+<groupId>org.hibernate</groupId>
+<artifactId>hibernate-validator</artifactId>
+<version>6.1.5.Final</version>
+</dependency>
+</dependencies>
+<build>
+<plugins>
+<plugin>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-maven-plugin</artifactId>
+</plugin>
+</plugins>
+</build>
+</project>
+
+
+
+ 
+
+          
+
+
+     

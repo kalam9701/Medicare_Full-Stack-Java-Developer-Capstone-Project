@@ -1,0 +1,358 @@
+MEDICINE MANAGEMENT SYSTEM
+
+
+
+MEDICINE CONTROLLER
+
+package com.medicine.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+
+import com.medicine.entity.Medicine;
+import com.medicine.service.MedicineService;
+
+
+
+
+
+
+
+@Controller
+public class MedicineController {
+	private MedicineService medicineService;
+
+	public MedicineController(MedicineService medicineService) {
+		super();
+		this.medicineService = medicineService;
+	}
+	
+	//hadler method to handle medicine  and return mode and view
+	
+	@GetMapping("/medicines")
+	public String listMedicines(Model model) {
+		model.addAttribute("medicines",medicineService.getAllMedicines());
+		return "medicines";
+		
+		
+	}
+	@GetMapping("/medicines/new")
+	public String createMedicineForm(Model model)  {
+		
+		//create student object to hold student form data
+		
+		Medicine  medicine = new Medicine();
+		model.addAttribute("medicine", medicine);
+		return "create_medicine";
+		}
+	
+	@PostMapping("/medicines")
+	public String saveMedicine(@ModelAttribute("student") Medicine medicine) {
+		medicineService.saveMedicine(medicine);
+		return "redirect:/medicines";
+	
+	}
+	@GetMapping("/medicines/edit/{id}")
+	public String editMedicineForm(@PathVariable Long id,Model model) {
+		model.addAttribute("student",medicineService.getMedicineById(id));
+		return "edit_medicine";
+		
+	}
+	@PostMapping("/medicines/{id}")
+	public String updateMedicine(@PathVariable Long id,
+			@ModelAttribute("medicine") Medicine medicine,
+			Model model) {
+	//get medicine from databases by id
+		Medicine existingMedicine = medicineService.getMedicineById(id);
+		existingMedicine.setId(id);
+		existingMedicine.setName(medicine.getName());
+		existingMedicine.setAbout(medicine.getAbout());
+		existingMedicine.setEmail(medicine.getEmail());
+		
+		//save updated student object
+		
+		medicineService.updateMedicine(existingMedicine);
+		return "redirect:/medicines";
+		
+		
+	
+	}
+
+}
+   
+
+
+MEDICINE ENTITY
+
+package com.medicine.entity;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity
+@Table(name="medicines")
+public class Medicine {
+	
+	
+	
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	
+	@Column(name="Medicine_Name",nullable=false)
+	private String name;
+	
+	@Column(name="About")
+	private String about;
+	
+	@Column(name="Email")
+	private String email;
+	
+	
+	public Medicine() {
+		
+	}
+	
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+
+
+	public String getAbout() {
+		return about;
+	}
+
+	public void setAbout(String about) {
+		this.about = about;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+	
+	public Medicine(String name, String about, String email) {
+		super();
+		this.name = name;
+		this.about = about;
+		this.email = email;
+	}
+	
+//	
+
+	
+	
+	
+
+}
+
+
+           MEDICINE REPOSITORY
+package com.medicine.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.medicine.entity.Medicine;
+
+public interface MedicineRepository extends JpaRepository<Medicine,Long>{
+
+}
+
+
+       MEDICINESERVICE
+
+package com.medicine.service;
+
+import java.util.List;
+
+import com.medicine.entity.Medicine;
+
+
+
+public interface MedicineService {
+	List<Medicine>getAllMedicines();
+	
+	Medicine saveMedicine(Medicine medicine);
+	
+	Medicine getMedicineById(Long  id);
+	
+	Medicine updateMedicine(Medicine medicine);
+	
+	void deleteMedicineById(Long id);
+
+}
+  
+          MEDICINE SERVICE IMP
+package com.medicine.service;
+
+import java.util.List;
+
+import com.medicine.entity.Medicine;
+
+
+
+public interface MedicineService {
+	List<Medicine>getAllMedicines();
+	
+	Medicine saveMedicine(Medicine medicine);
+	
+	Medicine getMedicineById(Long  id);
+	
+	Medicine updateMedicine(Medicine medicine);
+	
+	void deleteMedicineById(Long id);
+
+}
+
+        MEDICINE MANAGEMENT SYSTEM APPLICATION
+
+package com.medicine;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import com.medicine.entity.Medicine;
+import com.medicine.repository.MedicineRepository;
+
+
+
+@SpringBootApplication
+public class MedicineManagementSystemApplication implements CommandLineRunner{
+
+	public static void main(String[] args) {
+		SpringApplication.run(MedicineManagementSystemApplication.class, args);
+	}
+	
+	@Autowired
+	private MedicineRepository medicineRepository;
+
+	@Override
+	public void run(String... args) throws Exception {
+		
+		
+		/*Medicine medicine1= new Medicine("Asprine","painkillerTablet_MRP:100","Asprine@gmail.com");
+		medicineRepository.save(medicine1);
+		
+		Medicine medicine2= new Medicine("Rantack","painkillerTablet_MRP:100","Asprine@gmail.com");
+		medicineRepository.save(medicine2);
+		*/
+		
+		
+	}
+	
+
+}
+
+ 
+
+APPLICATION PROPERTIES
+
+server.port=8382
+spring.datasource.name=test
+spring.datasource.password=arnab@1994
+spring.datasource.username=root
+spring.datasource.url=jdbc:mysql://localhost:3306/mms?serverTimezone=UTC
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+logging.level.org.hibernate.SQL=DEBUG
+
+
+      
+    
+              
+
+   POM XML 
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
+<parent>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-parent</artifactId>
+<version>2.6.2</version>
+<relativePath/>
+<!--  lookup parent from repository  -->
+</parent>
+<groupId>com.medicine</groupId>
+<artifactId>medicine-management-system</artifactId>
+<version>0.0.1-SNAPSHOT</version>
+<name>medicine-management-system</name>
+<description>Medicine Management System using SpringBoot and Thymeleaf</description>
+<properties>
+<java.version>11</java.version>
+</properties>
+<dependencies>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-devtools</artifactId>
+<scope>runtime</scope>
+<optional>true</optional>
+</dependency>
+<dependency>
+<groupId>mysql</groupId>
+<artifactId>mysql-connector-java</artifactId>
+<scope>runtime</scope>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-test</artifactId>
+<scope>test</scope>
+</dependency>
+</dependencies>
+<build>
+<plugins>
+<plugin>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-maven-plugin</artifactId>
+</plugin>
+</plugins>
+</build>
+</project
+
+
+
+                       
+   
